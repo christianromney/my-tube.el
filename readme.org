@@ -1,0 +1,147 @@
+* my-tube.el
+This project is a simple minor mode for Emacs to interact with the YouTube Data
+API v3.
+
+** What Problems Does It Solve?
+This mode allows the user to perform basic YouTube playlist management from
+within Emacs. It does not aim to provide comprehensive coverage of the YouTube
+Data API.
+
+** Use Cases
+- I want to list the items I've saved in one of my YouTube playlists, choose
+  one, and open it in a browser.
+- Given a URL for a YouTube video, I want to add it to one of my playlists.
+- I want to remove an item from one of my playlists.
+
+** Primary Operations
+This mode exposes commands to:
+- ~list-playlists~ :: list a user's playlists
+- ~create-playlist~ :: creates a new named playlist for a user
+- ~delete-playlist~ :: deletes a playlist for a user
+- ~list-playlist-items~ :: list the items in a user's given playlist
+- ~add-item-to-playlist~ :: adds an item to a user's playlist
+- ~remove-item-from-playlist~ :: removes an item from a user's playlist
+
+** Installation
+
+*** Prerequisites
+- Emacs 26.1 or higher
+- Internet connection for API access
+- Google account for YouTube API access
+
+*** Step 1: Install the Package
+1. Download ~my-tube.el~ to your Emacs load path
+2. Add to your Emacs configuration:
+   #+begin_src emacs-lisp
+   (require 'my-tube)
+   #+end_src
+
+*** Step 2: Create Google Cloud Project and OAuth Credentials
+1. Go to the [[https://console.cloud.google.com/][Google Cloud Console]]
+2. Create a new project or select an existing one
+3. Navigate to "APIs & Services" > "Library"
+4. Search for "YouTube Data API v3" and enable it
+5. Go to "APIs & Services" > "Credentials"
+6. Click "Create Credentials" > "OAuth 2.0 Client IDs"
+7. If prompted, configure the OAuth consent screen:
+   - Choose "External" user type
+   - Fill in required fields (app name, user support email, developer contact)
+   - Add your email to test users
+8. For application type, select "Desktop application"
+9. Give it a name (e.g., "My Tube Emacs")
+10. Click "Create"
+11. Download the JSON file or copy the Client ID and Client Secret
+
+*** Step 3: Store Credentials Securely
+
+**** Option A: Using macOS Keychain (Recommended for macOS users)
+1. Open Terminal and run:
+   #+begin_src bash
+   security add-generic-password -a "YOUR_CLIENT_ID" -s "youtube-api" -w "YOUR_CLIENT_SECRET"
+   #+end_src
+   Replace ~YOUR_CLIENT_ID~ and ~YOUR_CLIENT_SECRET~ with your actual values.
+
+2. Configure auth-source in your Emacs configuration:
+   #+begin_src emacs-lisp
+   (setq auth-sources '(macos-keychain-generic))
+   #+end_src
+
+**** Option B: Using .authinfo.gpg file (Cross-platform)
+1. Create an encrypted file ~~/.authinfo.gpg~:
+   #+begin_src
+   machine youtube-api login YOUR_CLIENT_ID password YOUR_CLIENT_SECRET
+   #+end_src
+   Replace ~YOUR_CLIENT_ID~ and ~YOUR_CLIENT_SECRET~ with your actual values.
+
+2. Configure auth-source in your Emacs configuration:
+   #+begin_src emacs-lisp
+   (setq auth-sources '("~/.authinfo.gpg"))
+   #+end_src
+
+**** Option C: Using Emacs Variables (Less secure)
+Add to your Emacs configuration:
+#+begin_src emacs-lisp
+(setq my-tube-client-id "YOUR_CLIENT_ID")
+(setq my-tube-client-secret "YOUR_CLIENT_SECRET")
+#+end_src
+
+** Usage
+
+*** Initial Setup
+1. Enable the minor mode:
+   #+begin_src
+   M-x my-tube-mode
+   #+end_src
+
+2. Authenticate with YouTube:
+   #+begin_src
+   M-x my-tube-authenticate
+   #+end_src
+   or press ~C-c y A~
+
+   This will:
+   - Open your browser to Google's OAuth consent page
+   - Ask you to authorize the application
+   - Prompt you to enter the authorization code in Emacs
+
+*** Available Commands
+
+**** Key Bindings (when my-tube-mode is enabled)
+- ~C-c y l~ :: List your playlists
+- ~C-c y c~ :: Create a new playlist
+- ~C-c y d~ :: Delete a playlist
+- ~C-c y i~ :: List items in a playlist
+- ~C-c y a~ :: Add a video to a playlist
+- ~C-c y r~ :: Remove an item from a playlist
+- ~C-c y A~ :: Authenticate with YouTube
+
+**** Interactive Commands
+- ~M-x my-tube-list-playlists~ :: Display all your playlists in a buffer
+- ~M-x my-tube-create-playlist~ :: Create a new playlist with title and description
+- ~M-x my-tube-delete-playlist~ :: Delete a playlist (with confirmation)
+- ~M-x my-tube-list-playlist-items~ :: Browse items in a selected playlist
+- ~M-x my-tube-add-item-to-playlist~ :: Add a YouTube video URL to a playlist
+- ~M-x my-tube-remove-item-from-playlist~ :: Remove an item from a playlist
+
+*** Example Workflow
+1. ~C-c y l~ to see your playlists
+2. ~C-c y a~ to add a video URL to a playlist
+3. ~C-c y i~ to browse playlist contents
+4. ~C-c y r~ to remove unwanted items
+
+*** Troubleshooting
+- If you get authentication errors, try running ~M-x my-tube-authenticate~ again
+- Check that your OAuth credentials are correctly stored
+- Ensure the YouTube Data API v3 is enabled in your Google Cloud project
+- For debugging, check the *Messages* buffer for error details
+
+** Implementation Choices
+- Sensitive credentials such as Oauth client ids and credentials or API keys
+  should be stored securely using a method which is idiomatic for Emacs Lisp code.
+  + Built-in libraries and modes should be used.
+  + If an API is complex or requires several steps, a simplified wrapper API
+    should be created to streamline its use.
+- Many users of this project will use Mac OS. Consider this when devising the
+  best implementation approach. For example, it may (or may not) be a good idea
+  to use the Mac OS Keychain. Consider the pros and cons before selecting the
+  best choice.
