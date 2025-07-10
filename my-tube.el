@@ -384,15 +384,21 @@ If CHANNEL-ID is provided, list playlists for that channel."
             (plist-get snippet :title)
             (plist-get (plist-get playlist :contentDetails) :itemCount))))
 
+(defun my-tube--format-video-url (playlist video)
+  "Format the video URL"
+  (format "https://www.youtube.com/watch?v=%s&list=%s" video playlist))
+
 (defun my-tube--format-playlist-item (item)
   "Format playlist item data for display."
-  (let ((snippet (plist-get item :snippet)))
+  (let* ((snippet (plist-get item :snippet))
+         (playlist (plist-get snippet :playlistId))
+         (resource (plist-get snippet :resourceId))
+         (video (plist-get resource :videoId)))
     (format "%s - %s"
             (plist-get snippet :title)
-            (plist-get snippet :channelTitle))))
+            (my-tube--format-video-url playlist video))))
 
 ;;; Interactive Commands
-
 ;;;###autoload
 (defun my-tube-list-playlists ()
   "List user's playlists."
@@ -458,7 +464,9 @@ If CHANNEL-ID is provided, list playlists for that channel."
               (erase-buffer)
               (insert (format "Items in playlist '%s':\n\n" selected))
               (dolist (item items)
-                (insert (format "- %s\n" (my-tube--format-playlist-item item))))
+                (let ((formatted-line (format "- %s\n" (my-tube--format-playlist-item item))))
+                  (insert formatted-line)
+                  (message "- %s" formatted-line)))
               (goto-char (point-min))
               (display-buffer (current-buffer)))
           (message "No items found in playlist")))
