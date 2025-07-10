@@ -175,16 +175,6 @@ This should be stored securely using auth-source."
 
 ;; (my-tube--restore-tokens)
 
-(defun my-tube--build-auth-url (client-id)
-  "Build OAuth 2.0 authorization URL with CLIENT-ID."
-  (format "%s?client_id=%s&redirect_uri=%s&scope=%s&response_type=code&access_type=offline"
-          my-tube--oauth-auth-url
-          (url-hexify-string client-id)
-          (url-hexify-string my-tube-redirect-uri)
-          (url-hexify-string my-tube--oauth-scope)))
-
-
-
 (defun my-tube--exchange-code-for-token (code)
   "Exchange authorization CODE for access token."
   (let* ((credentials (my-tube--get-credentials))
@@ -192,7 +182,7 @@ This should be stored securely using auth-source."
          (client-secret (cdr credentials)))
     (unless (and client-id client-secret)
       (error "Missing OAuth 2.0 credentials"))
-    
+
     (let* ((url-request-method "POST")
            (url-request-extra-headers '(("Content-Type" . "application/x-www-form-urlencoded")))
            (url-request-data
@@ -223,15 +213,29 @@ This should be stored securely using auth-source."
           (kill-buffer)
           (if (plist-get response :error)
               (error "OAuth error: %s" (plist-get response :error_description))
-            (setq my-tube--access-token (plist-get response :access_token))
-            (setq my-tube--refresh-token (plist-get response :refresh_token))
-            (setq my-tube--token-expiry
-                  (time-add (current-time) (seconds-to-time (plist-get response :expires_in))))
-            (my-tube--save-tokens my-tube--access-token my-tube--refresh-token my-tube--token-expiry)
-            t))))))
+            (progn
+              (setq my-tube--access-token (plist-get response :access_token))
+              (setq my-tube--refresh-token (plist-get response :refresh_token))
+              (setq my-tube--token-expiry (time-add
+                                            (current-time)
+                                            (seconds-to-time (plist-get response :expires_in))))
+              (my-tube--save-tokens
+                my-tube--access-token
+                my-tube--refresh-token
+                my-tube--token-expiry)
+              t)))))))
+
+(defun my-tube--build-auth-url (client-id)
+  "Build OAuth 2.0 authorization URL with CLIENT-ID."
+  (format "%s?client_id=%s&redirect_uri=%s&scope=%s&response_type=code&access_type=offline"
+          my-tube--oauth-auth-url
+          (url-hexify-string client-id)
+          (url-hexify-string my-tube-redirect-uri)
+          (url-hexify-string my-tube--oauth-scope)))
 
 (defun my-tube--refresh-access-token ()
   "Refresh the access token using the refresh token."
+
   (unless my-tube--refresh-token
     (error "No refresh token available"))
   
@@ -266,7 +270,7 @@ This should be stored securely using auth-source."
             (setq my-tube--token-expiry
                   (time-add (current-time) (seconds-to-time (plist-get response :expires_in))))
             (my-tube--save-tokens my-tube--access-token my-tube--refresh-token my-tube--token-expiry)
-            t)))))
+            t))))))
 
 (defun my-tube--ensure-valid-token ()
   "Ensure we have a valid access token."
