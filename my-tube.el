@@ -65,6 +65,11 @@ This should be stored securely using auth-source."
   :type 'string
   :group 'my-tube)
 
+(defcustom my-tube-debug nil
+  "Enable debug logging for OAuth requests."
+  :type 'boolean
+  :group 'my-tube)
+
 ;;; Constants
 
 (defconst my-tube--api-base-url "https://www.googleapis.com/youtube/v3"
@@ -104,6 +109,8 @@ This should be stored securely using auth-source."
                       (funcall secret)
                     secret))))
       (cons my-tube-client-id my-tube-client-secret))))
+
+;; (my-tube--get-credentials)
 
 (defun my-tube--save-tokens (access-token refresh-token expiry-time)
   "Save OAuth tokens to auth-source for persistence."
@@ -152,7 +159,7 @@ This should be stored securely using auth-source."
     (when (and token-data (stringp token-data) (> (length token-data) 0))
       (condition-case nil
           (let* ((json-object-type 'plist)
-                 (json-key-type 'symbol)
+                 (json-key-type 'keyword)
                  (json-array-type 'vector)
                  (parsed-data (json-read-from-string token-data))
                  (access-token (plist-get parsed-data :access_token))
@@ -164,6 +171,9 @@ This should be stored securely using auth-source."
               (setq my-tube--token-expiry (seconds-to-time expiry-time))
               t))
         (error nil)))))
+
+
+;; (my-tube--restore-tokens)
 
 (defun my-tube--build-auth-url (client-id)
   "Build OAuth 2.0 authorization URL with CLIENT-ID."
@@ -181,24 +191,33 @@ This should be stored securely using auth-source."
     (unless (and client-id client-secret)
       (error "Missing OAuth 2.0 credentials"))
     
-    (let ((url-request-method "POST")
-          (url-request-extra-headers '(("Content-Type" . "application/x-www-form-urlencoded")))
-          (url-request-data
-           (mapconcat 'identity
-                      (list
-                       (format "code=%s" (url-hexify-string code))
-                       (format "client_id=%s" (url-hexify-string client-id))
-                       (format "client_secret=%s" (url-hexify-string client-secret))
-                       (format "redirect_uri=%s" (url-hexify-string my-tube-redirect-uri))
-                       "grant_type=authorization_code")
-                      "&")))
-      (with-current-buffer (url-retrieve-synchronously my-tube--oauth-token-url)
+    (let* ((url-request-method "POST")
+           (url-request-extra-headers '(("Content-Type" . "application/x-www-form-urlencoded")))
+           (url-request-data
+            (mapconcat 'identity
+                       (list
+                        (format "code=%s" (url-hexify-string code))
+                        (format "client_id=%s" (url-hexify-string client-id))
+                        (format "client_secret=%s" (url-hexify-string client-secret))
+                        (format "redirect_uri=%s" (url-hexify-string my-tube-redirect-uri))
+                        "grant_type=authorization_code")
+                       "&"))
+           (response-buffer (progn
+                              (when my-tube-debug
+                                (message "my-tube DEBUG: Sending POST to %s" my-tube--oauth-token-url)
+                                (message "my-tube DEBUG: POST data: %s" url-request-data))
+                              (url-retrieve-synchronously my-tube--oauth-token-url))))
+      (with-current-buffer response-buffer
         (goto-char (point-min))
+        (when my-tube-debug
+          (message "my-tube DEBUG: Response buffer contents:\n%s" (buffer-string)))
         (search-forward "\n\n")
         (let* ((json-object-type 'plist)
-               (json-key-type 'symbol)
+               (json-key-type 'keyword)
                (json-array-type 'vector)
                (response (json-read)))
+          (when my-tube-debug
+            (message "my-tube DEBUG: Parsed response: %S" response))
           (kill-buffer)
           (if (plist-get response :error)
               (error "OAuth error: %s" (plist-get response :error_description))
@@ -207,7 +226,7 @@ This should be stored securely using auth-source."
             (setq my-tube--token-expiry
                   (time-add (current-time) (seconds-to-time (plist-get response :expires_in))))
             (my-tube--save-tokens my-tube--access-token my-tube--refresh-token my-tube--token-expiry)
-            t))))))
+            t)))))
 
 (defun my-tube--refresh-access-token ()
   "Refresh the access token using the refresh token."
@@ -220,21 +239,22 @@ This should be stored securely using auth-source."
     (unless (and client-id client-secret)
       (error "Missing OAuth 2.0 credentials"))
     
-    (let ((url-request-method "POST")
-          (url-request-extra-headers '(("Content-Type" . "application/x-www-form-urlencoded")))
-          (url-request-data
-           (mapconcat 'identity
-                      (list
-                       (format "refresh_token=%s" (url-hexify-string my-tube--refresh-token))
-                       (format "client_id=%s" (url-hexify-string client-id))
-                       (format "client_secret=%s" (url-hexify-string client-secret))
-                       "grant_type=refresh_token")
-                      "&")))
-      (with-current-buffer (url-retrieve-synchronously my-tube--oauth-token-url)
+    (let* ((url-request-method "POST")
+           (url-request-extra-headers '(("Content-Type" . "application/x-www-form-urlencoded")))
+           (url-request-data
+            (mapconcat 'identity
+                       (list
+                        (format "refresh_token=%s" (url-hexify-string my-tube--refresh-token))
+                        (format "client_id=%s" (url-hexify-string client-id))
+                        (format "client_secret=%s" (url-hexify-string client-secret))
+                        "grant_type=refresh_token")
+                       "&"))
+           (response-buffer (url-retrieve-synchronously my-tube--oauth-token-url)))
+      (with-current-buffer response-buffer
         (goto-char (point-min))
         (search-forward "\n\n")
         (let* ((json-object-type 'plist)
-               (json-key-type 'symbol)
+               (json-key-type 'keyword)
                (json-array-type 'vector)
                (response (json-read)))
           (kill-buffer)
@@ -244,7 +264,7 @@ This should be stored securely using auth-source."
             (setq my-tube--token-expiry
                   (time-add (current-time) (seconds-to-time (plist-get response :expires_in))))
             (my-tube--save-tokens my-tube--access-token my-tube--refresh-token my-tube--token-expiry)
-            t))))))
+            t)))))
 
 (defun my-tube--ensure-valid-token ()
   "Ensure we have a valid access token."
@@ -299,7 +319,7 @@ PARAMS is an alist of query parameters, DATA is request body for POST/PUT."
       (goto-char (point-min))
       (search-forward "\n\n")
       (let* ((json-object-type 'plist)
-             (json-key-type 'symbol)
+             (json-key-type 'keyword)
              (json-array-type 'vector)
              (response (json-read)))
         (kill-buffer)

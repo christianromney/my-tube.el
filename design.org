@@ -1,0 +1,389 @@
+#+TITLE: My Tube Emacs Package Design Document
+#+AUTHOR: Christian Romney
+#+DATE: 2025-01-10
+
+* Overview
+
+My Tube is an Emacs minor mode that provides YouTube playlist management
+functionality through the YouTube Data API v3. This document describes the
+system architecture, data flows, and key design decisions.
+
+* System Architecture
+
+** Component Overview
+
+The system is structured in a layered architecture:
+
+1. **User Interface Layer**: Interactive commands and key bindings
+2. **Application Layer**: Business logic and workflow orchestration  
+3. **API Layer**: YouTube Data API v3 wrapper functions
+4. **HTTP Layer**: HTTP request/response handling with JSON parsing
+5. **Storage Layer**: OAuth token persistence using auth-source/keychain
+
+** Core Components
+
+- **Authentication Manager**: Handles OAuth 2.0 flow and token management
+- **API Client**: Provides typed interface to YouTube Data API v3
+- **Token Store**: Manages secure storage and retrieval of OAuth tokens
+- **Command Interface**: Interactive commands for playlist management
+- **Data Formatters**: Transform API responses for display
+
+** Dependencies
+
+- ~url~: Built-in HTTP client for API requests
+- ~json~: JSON parsing and encoding
+- ~auth-source~: Credential storage abstraction
+- ~browse-url~: Browser integration for OAuth consent
+
+* OAuth Authentication Flow
+
+The OAuth 2.0 authentication follows the installed application flow:
+
+#+begin_src mermaid :file docs/authentication.png :mkdir yes
+sequenceDiagram
+    participant User
+    participant Emacs as Emacs (my-tube)
+    participant Browser
+    participant Google as Google OAuth
+    participant Keychain as macOS Keychain
+    
+    User->>Emacs: M-x my-tube-authenticate
+    Emacs->>Emacs: my-tube--get-credentials()
+    Emacs->>Emacs: my-tube--build-auth-url(client-id)
+    Emacs->>Browser: browse-url(auth-url)
+    Browser->>Google: GET /o/oauth2/v2/auth?client_id=...
+    Google->>User: Display consent screen
+    User->>Google: Grant permissions
+    Google->>Browser: Redirect with auth-code
+    Browser->>User: Display auth code
+    User->>Emacs: Enter auth code
+    Emacs->>Google: POST /token (oauth-token-request)
+    Google->>Emacs: oauth-token-response
+    Emacs->>Emacs: Store tokens in variables
+    Emacs->>Keychain: security add-generic-password (keychain-storage-format)
+    Emacs->>User: "Successfully authenticated"
+#+end_src
+
+#+RESULTS:
+[[file:docs/authentication.png]]
+
+** Example Payloads
+
+*** OAuth Token Request
+#+begin_src json :tangle oauth-token-request.json
+{
+  "code": "4/0AX4XfWjH5...",
+  "client_id": "123456789.apps.googleusercontent.com",
+  "client_secret": "ABC123_secret",
+  "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
+  "grant_type": "authorization_code"
+}
+#+end_src
+
+*** OAuth Token Response
+#+begin_src json :tangle oauth-token-response.json
+{
+  "access_token": "ya29.a0ARrdaM...",
+  "refresh_token": "1//04_token...",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "https://www.googleapis.com/auth/youtube"
+}
+#+end_src
+
+*** Keychain Storage Format
+#+begin_src json :tangle keychain-storage-format.json
+{
+  "access_token": "ya29.a0ARrdaM...",
+  "refresh_token": "1//04_token...",
+  "expiry_time": 1704906234.567
+}
+#+end_src
+
+* Token Persistence Flow
+
+The token persistence system ensures OAuth tokens survive across Emacs sessions:
+
+#+begin_src mermaid :file docs/token.png :mkdir yes
+sequenceDiagram
+    participant App as Application Layer
+    participant TokenStore as Token Store
+    participant Keychain as macOS Keychain
+    participant Variables as Emacs Variables
+    
+    Note over App,Variables: Token Storage
+    App->>TokenStore: my-tube--save-tokens(access, refresh, expiry)
+    TokenStore->>Keychain: security add-generic-password
+    alt Keychain Success
+        Keychain->>TokenStore: Success
+    else Keychain Failure
+        TokenStore->>Variables: Set session variable
+    end
+    
+    Note over App,Variables: Token Restoration
+    App->>TokenStore: my-tube--restore-tokens()
+    TokenStore->>Keychain: security find-generic-password
+    alt Keychain Success
+        Keychain->>TokenStore: keychain-storage-format
+        TokenStore->>Variables: Set access/refresh tokens
+        TokenStore->>App: Success
+    else Keychain Failure
+        TokenStore->>Variables: Check session variable
+        Variables->>TokenStore: Stored data or nil
+        TokenStore->>App: Success or failure
+    end
+#+end_src
+
+#+RESULTS:
+[[file:docs/token.png]]
+
+* API Call Data Flow
+
+This diagram shows how OAuth tokens flow through the API call process:
+
+#+begin_src mermaid :file docs/data-flow.png
+flowchart TD
+    A[User Command] --> B[my-tube--ensure-valid-token]
+    B --> C{Token Valid?}
+    C -->|No| D[my-tube--restore-tokens]
+    D --> E{Restored?}
+    E -->|No| F[my-tube--refresh-access-token]
+    F --> G[my-tube--save-tokens]
+    E -->|Yes| H[my-tube--make-request]
+    C -->|Yes| H
+    G --> H
+    H --> I[Build HTTP Request]
+    I --> J[Add Authorization: Bearer token]
+    J --> K[url-retrieve-synchronously]
+    K --> L[YouTube API v3]
+    L --> M[youtube-api-response]
+    M --> N[Parse JSON Response]
+    N --> O{Success?}
+    O -->|No| P[api-error-response]
+    O -->|Yes| Q[Return Data]
+    P --> R[Throw Error]
+    Q --> S[Format for Display]
+    S --> T[Present to User]
+
+    style A fill:#e1f5fe
+    style T fill:#e8f5e8
+    style R fill:#ffebee
+#+end_src
+
+#+RESULTS:
+[[file:docs/data-flow.png]]
+
+** API Request Headers
+#+begin_src http
+Authorization: Bearer ya29.a0ARrdaM...
+Content-Type: application/json
+#+end_src
+
+** Example API Responses
+
+*** YouTube Playlists Response
+#+begin_src json :tangle youtube-playlists-response.json
+{
+  "kind": "youtube#playlistListResponse",
+  "etag": "abc123",
+  "items": [
+    {
+      "kind": "youtube#playlist",
+      "etag": "def456",
+      "id": "PLx123456789",
+      "snippet": {
+        "publishedAt": "2023-01-01T00:00:00Z",
+        "channelId": "UC123456789",
+        "title": "My Favorite Videos",
+        "description": "A collection of my favorite YouTube videos",
+        "thumbnails": {
+          "default": {
+            "url": "https://i.ytimg.com/vi/123/default.jpg"
+          }
+        }
+      },
+      "contentDetails": {
+        "itemCount": 25
+      }
+    }
+  ]
+}
+#+end_src
+
+*** API Error Response
+#+begin_src json :tangle api-error-response.json
+{
+  "error": {
+    "code": 401,
+    "message": "Invalid Credentials",
+    "errors": [
+      {
+        "message": "Invalid Credentials",
+        "domain": "global",
+        "reason": "authError",
+        "location": "Authorization",
+        "locationType": "header"
+      }
+    ]
+  }
+}
+#+end_src
+
+* User Command Execution Flow
+
+This sequence shows how user commands are processed:
+
+#+begin_src mermaid :file docs/list-playlists.png :mkdir yes
+sequenceDiagram
+    participant User
+    participant UI as User Interface
+    participant App as Application Layer
+    participant API as API Layer
+    participant YouTube as YouTube API
+    participant Buffer as Emacs Buffer
+    
+    User->>UI: M-x my-tube-list-playlists
+    UI->>App: my-tube-list-playlists()
+    App->>API: my-tube--api-playlists-list(mine=true)
+    API->>API: my-tube--make-request("GET", "/playlists", params)
+    API->>YouTube: GET /youtube/v3/playlists?mine=true&part=snippet,contentDetails
+    YouTube->>API: youtube-playlists-response
+    API->>App: Parsed response data
+    App->>App: Extract playlist items
+    App->>UI: Format playlists for display
+    UI->>Buffer: Create "*My Tube Playlists*" buffer
+    Buffer->>User: Display formatted playlist list
+    
+    alt Error Occurred
+        API->>App: API error
+        App->>UI: Error message
+        UI->>User: Display error in minibuffer
+    end
+#+end_src
+
+#+RESULTS:
+[[file:docs/list-playlists.png]]
+
+* Component Architecture
+
+#+begin_src mermaid :file docs/components.png
+graph TB
+    subgraph "User Interface Layer"
+        CMD[Interactive Commands]
+        KEY[Key Bindings]
+        BUF[Buffer Display]
+    end
+    
+    subgraph "Application Layer"
+        AUTH[Authentication Manager]
+        FLOW[Workflow Orchestration]
+        FMT[Data Formatters]
+    end
+    
+    subgraph "API Layer"
+        WRAP[YouTube API Wrappers]
+        HTTP[HTTP Client]
+        JSON[JSON Parser]
+    end
+    
+    subgraph "Storage Layer"
+        TOKEN[Token Store]
+        KEYCHAIN[macOS Keychain]
+        AUTHSRC[auth-source]
+    end
+    
+    subgraph "External Services"
+        GAUTH[Google OAuth]
+        YTAPI[YouTube Data API]
+        BROWSER[Web Browser]
+    end
+    
+    CMD --> FLOW
+    KEY --> FLOW
+    FLOW --> AUTH
+    FLOW --> WRAP
+    FLOW --> FMT
+    AUTH --> TOKEN
+    WRAP --> HTTP
+    HTTP --> JSON
+    TOKEN --> KEYCHAIN
+    TOKEN --> AUTHSRC
+    AUTH --> GAUTH
+    HTTP --> YTAPI
+    AUTH --> BROWSER
+    FMT --> BUF
+    
+    style CMD fill:#e3f2fd
+    style FLOW fill:#f3e5f5
+    style HTTP fill:#e8f5e8
+    style TOKEN fill:#fff3e0
+    style YTAPI fill:#ffebee
+#+end_src
+
+#+RESULTS:
+[[file:docs/components.png]]
+
+* Error Handling and Edge Cases
+
+** Authentication Errors
+- **Invalid Credentials**: Clear stored tokens, require re-authentication
+- **Token Expiration**: Automatically refresh using refresh token
+- **Network Failure**: Retry with exponential backoff
+- **Revoked Access**: Clear tokens, require user re-authentication
+
+** API Errors
+- **Rate Limiting**: Implement request throttling
+- **Invalid Requests**: Validate parameters before API calls
+- **Server Errors**: Graceful degradation with user feedback
+- **Malformed Responses**: Robust JSON parsing with error handling
+
+** Storage Errors
+- **Keychain Unavailable**: Fallback to session-only storage
+- **Permission Denied**: Inform user of storage limitations
+- **Data Corruption**: Validate stored data, clear if invalid
+
+** User Experience
+- **Long Operations**: Display progress indicators
+- **Empty Results**: Provide helpful messaging
+- **Invalid Input**: Validate YouTube URLs and playlist names
+- **Concurrent Operations**: Prevent multiple simultaneous API calls
+
+* Security Considerations
+
+** Credential Storage
+- OAuth tokens stored in macOS Keychain when available
+- Fallback to session-only storage for security
+- Never store credentials in plain text files
+- Client secrets retrieved from auth-source
+
+** API Security
+- All API calls use HTTPS encryption
+- Bearer token authentication for API requests
+- Automatic token refresh prevents long-lived tokens
+- Scope limitation to YouTube API only
+
+** Data Handling
+- No caching of sensitive user data
+- Temporary buffers cleared after use
+- Error messages sanitized to prevent information leakage
+- Input validation for all user-provided data
+
+* Future Enhancements
+
+** Planned Features
+- Playlist collaboration and sharing
+- Video search and discovery
+- Batch operations for playlist management
+- Export/import functionality
+
+** Technical Improvements
+- Asynchronous API calls for better responsiveness
+- Caching layer for frequently accessed data
+- Request deduplication and batching
+- Enhanced error recovery mechanisms
+
+** User Experience
+- Rich media display in buffers
+- Keyboard shortcuts for common operations
+- Integration with other Emacs multimedia packages
+- Customizable display formats
