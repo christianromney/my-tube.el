@@ -373,6 +373,13 @@ If CHANNEL-ID is provided, list playlists for that channel."
   (my-tube--make-request "DELETE" "/playlistItems" `((id . ,playlist-item-id))))
 
 ;;; Utility Functions
+(defun plist-put! (p &rest pairs)
+  "Adds all the key/value pairs to the plist P"
+  (if (null pairs)
+    p
+    (apply 'plist-put!
+      (plist-put p (car pairs) (cadr pairs))
+      (cddr pairs))))
 
 (defun plist-select-keys (plist keys)
   "Return a new plist containing only the KEYs from PLIST."
