@@ -1,0 +1,149 @@
+#+TITLE: Terms of Service for My Tube Emacs Extension
+#+DATE: July 2025
+
+* Acceptance of Terms
+
+By using My Tube (the "Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Service.
+
+* Description of Service
+
+My Tube is an open-source Emacs extension that provides YouTube playlist management functionality through the YouTube Data API v3. The Service allows users to:
+- View and manage YouTube playlists
+- Create, edit, and delete playlists
+- Add and remove videos from playlists
+- Perform these actions directly within the Emacs text editor
+
+* Eligibility
+
+To use this Service, you must:
+- Have a valid Google/YouTube account
+- Be at least 13 years old (or the minimum age required in your jurisdiction)
+- Have the legal capacity to enter into these Terms
+- Comply with all applicable laws and regulations
+
+* User Responsibilities
+
+** Account Security
+- You are responsible for maintaining the security of your Google/YouTube account
+- You must keep your OAuth credentials secure and not share them with others
+- You are responsible for all activities that occur under your account
+
+** Compliance
+- You must comply with YouTube's Terms of Service
+- You must comply with Google's API Terms of Service
+- You must not use the Service for any illegal or unauthorized purpose
+- You must not violate any laws in your jurisdiction
+
+** Acceptable Use
+You agree NOT to:
+- Use the Service to violate YouTube's community guidelines
+- Attempt to access data you don't have permission to access
+- Use the Service for commercial purposes without proper authorization
+- Reverse engineer, decompile, or disassemble the Service
+- Interfere with or disrupt the Service or servers
+
+* Service Availability
+
+** "As Is" Basis
+- The Service is provided "as is" without warranties of any kind
+- We make no guarantees about Service availability or uptime
+- The Service may be interrupted for maintenance or updates
+
+** Third-Party Dependencies
+- The Service depends on Google's YouTube Data API v3
+- Service availability may be affected by Google's API availability
+- We are not responsible for third-party service disruptions
+
+* Privacy and Data
+
+** Data Handling
+- Your use of the Service is governed by our Privacy Policy
+- We do not collect, store, or share your personal data
+- All data remains on your local device
+
+** YouTube Data
+- The Service accesses your YouTube data only as necessary for functionality
+- We comply with Google's API Services User Data Policy
+- Your YouTube data is subject to Google's Terms of Service and Privacy Policy
+
+* Intellectual Property
+
+** Open Source License
+- My Tube is open-source software
+- The source code is available under the specified license terms
+- Users may modify and distribute the software according to the license
+
+** Trademarks
+- YouTube and Google are trademarks of Google LLC
+- Emacs is a trademark of the Free Software Foundation
+- We claim no ownership of third-party trademarks
+
+* Limitation of Liability
+
+** No Warranties
+THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+** Limitation of Damages
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SERVICE OR THE USE OR OTHER DEALINGS IN THE SERVICE.
+
+** Maximum Liability
+OUR TOTAL LIABILITY TO YOU FOR ANY CLAIMS ARISING FROM OR RELATED TO THE SERVICE SHALL NOT EXCEED THE AMOUNT YOU PAID FOR THE SERVICE (WHICH IS ZERO FOR THIS FREE SERVICE).
+
+* Indemnification
+
+You agree to indemnify and hold harmless the Service providers from any claims, damages, losses, or expenses arising from:
+- Your use of the Service
+- Your violation of these Terms
+- Your violation of any third-party rights
+- Your violation of applicable laws or regulations
+
+* Termination
+
+** By You
+- You may stop using the Service at any time
+- You may revoke OAuth permissions through your Google Account settings
+- You may delete all local data by removing the extension
+
+** By Us
+We may terminate or suspend your access to the Service:
+- If you violate these Terms
+- If required by law or third-party requirements
+- If the Service is discontinued
+
+* Google API Compliance
+
+** API Terms
+- Your use of the Service is subject to Google's API Terms of Service
+- We comply with Google's API Services User Data Policy
+- The Service's access to YouTube data is limited to stated functionality
+
+** Data Use
+- The Service uses YouTube data only for providing playlist management features
+- No data is shared with third parties
+- All data handling complies with Google's requirements
+
+* Changes to Terms
+
+We may update these Terms from time to time. Changes will be posted with an updated "Last Updated" date. Continued use of the Service after changes constitutes acceptance of the updated Terms.
+
+* Governing Law
+
+These Terms are governed by and construed in accordance with the laws of the United States. Any disputes arising from these Terms or the Service shall be resolved in the appropriate courts.
+
+* Severability
+
+If any provision of these Terms is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.
+
+* Contact Information
+
+For questions about these Terms or the Service, please contact:
+- Email: christian.a.romney@gmail.com
+- GitHub: [[https://github.com/christianromney/my-tube.el][Project Repository]]
+
+* Entire Agreement
+
+These Terms, together with our Privacy Policy, constitute the entire agreement between you and us regarding the Service and supersede any prior agreements or understandings.
+
+-----
+
+/By using My Tube, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service./

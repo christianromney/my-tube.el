@@ -48,3 +48,7 @@ Since this is an early-stage project, development will involve:
 2. Implementing OAuth flow for YouTube API authentication
 3. Building the core playlist management functions
 4. Testing with actual YouTube API integration
+
+## Developer Information
+- The source code for this Emacs package can be found at https://github.com/christianromney/my-tube.el
+- The name and email of the developer can be found in the commit history of the Git repository.

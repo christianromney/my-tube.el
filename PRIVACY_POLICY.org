@@ -1,0 +1,108 @@
+#+TITLE: Privacy Policy for My Tube Emacs Extension
+#+DATE: July 2025
+
+* Overview
+
+My Tube is an Emacs package that allows users to manage their YouTube
+playlists directly from within Emacs. This privacy policy explains how we handle
+your data when you use our application.
+
+* Information We Collect
+
+** YouTube Data
+When you use My Tube, we access the following information from your YouTube account:
+- Your YouTube playlists (titles, descriptions, privacy settings)
+- Playlist items (video titles, descriptions, thumbnails)
+- Basic account information necessary for API authentication
+
+** Authentication Data
+- OAuth 2.0 access tokens and refresh tokens
+- These tokens are stored locally on your device using secure storage methods (macOS Keychain or encrypted files)
+
+* How We Use Your Information
+
+We use your YouTube data exclusively to:
+- Display your playlists within Emacs
+- Allow you to create, modify, and delete playlists
+- Add and remove videos from your playlists
+- Provide the core functionality of playlist management
+
+* Data Storage and Security
+
+** Local Storage Only
+- All data is stored locally on your device
+- No personal information is transmitted to our servers
+- We do not maintain any databases or remote storage systems
+
+** Secure Credential Storage
+- OAuth tokens are stored using secure methods:
+  - macOS Keychain on macOS systems
+  - Encrypted .authinfo.gpg files
+  - Emacs auth-source security system
+
+** Data Protection
+- All communication with YouTube's API uses HTTPS encryption
+- Credentials are never stored in plain text
+- No logging of personal information occurs
+
+* Data Sharing
+
+We do not share, sell, or transmit your data to any third parties. Your YouTube data remains:
+- On your local device only
+- Under your complete control
+- Accessible only through your direct actions in Emacs
+
+* Third-Party Services
+
+** YouTube Data API v3
+- We use Google's YouTube Data API v3 to access your YouTube account
+- This access is governed by Google's Terms of Service and Privacy Policy
+- We only request the minimum permissions necessary for playlist management
+
+** Google OAuth 2.0
+- Authentication is handled through Google's OAuth 2.0 system
+- We do not store your Google account credentials
+- You can revoke access at any time through your Google Account settings
+
+* Your Rights and Controls
+
+** Access Control
+- You control all access to your YouTube data through OAuth permissions
+- You can revoke access at any time via your Google Account settings
+- Uninstalling the extension removes all local data
+
+** Data Deletion
+- To delete all stored data, simply remove the extension and clear your auth-source credentials
+- No data remains on remote servers as none is stored there
+
+* Data Retention
+
+- OAuth tokens are retained locally until you revoke access or uninstall the extension
+- No usage data, logs, or analytics are collected or retained
+- Cached playlist data is temporary and cleared when Emacs is restarted
+
+* Children's Privacy
+
+My Tube is not intended for use by children under 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us.
+
+* Changes to This Privacy Policy
+
+We may update this privacy policy from time to time. Any changes will be posted in this document with an updated "Last Updated" date. Continued use of My Tube after changes constitutes acceptance of the updated policy.
+
+* Contact Information
+
+For questions about this privacy policy or our data practices, please contact:
+- Email: christian.a.romney@gmail.com
+- GitHub: [[https://github.com/christianromney/my-tube.el][Project Repository]]
+
+* Compliance
+
+This privacy policy is designed to comply with:
+- Google API Services User Data Policy
+- California Consumer Privacy Act (CCPA)
+- European Union General Data Protection Regulation (GDPR)
+- YouTube API Terms of Service
+
+* Limited Use Disclosure
+
+My Tube's use and transfer of information received from Google APIs to any other app will adhere to [[https://developers.google.com/terms/api-services-user-data-policy][Google API Services User Data Policy]], including the Limited Use requirements.
