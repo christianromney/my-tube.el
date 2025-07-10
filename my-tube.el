@@ -390,7 +390,7 @@ If CHANNEL-ID is provided, list playlists for that channel."
 
 (defun my-tube--flatten-playlists (response)
   "Returns a flattened list of playlists in the RESPONSE containing
-only :kind :id :title :count :url :and keys."
+only :kind :id :title :count and :url keys."
   (mapcar (lambda (item)
             (let ((narrowed (plist-select-keys item '(:kind :id)))
                   (title (plist-get-in item '(:snippet :title)))
@@ -399,19 +399,6 @@ only :kind :id :title :count :url :and keys."
               (plist-put! narrowed :title title :count count :url url)
               narrowed))
     (plist-get response :items)))
-
-(defun my-tube--flatten-playlist-items (response)
-  "Returns a flattened list of playlist items in the RESPONSE containing
-only :kind :id :title and :url keys."
-  (mapcar (lambda (item)
-            (let ((narrowed (plist-select-keys item '(:kind :id)))
-                  (title (plist-get-in item '(:snippet :title)))
-                  (count (plist-get-in item '(:contentDetails :itemCount)))
-                  (url   (my-tube--format-playlist-url (plist-get item :id))))
-              (plist-put! narrowed :title title :count count :url url)
-              narrowed))
-    (plist-get response :items)))
-
 
 (defun my-tube--extract-video-id (url)
   "Extract video ID from YouTube URL."
@@ -435,7 +422,7 @@ only :kind :id :title and :url keys."
 
 (defun my-tube--flatten-playlist-items (response)
   "Returns a flattened list of playlist items in the RESPONSE containing
-only :kind :id :title :count and :url keys."
+only :kind :id :title :playlist :position :channel-name :channel-id and :url keys."
   (mapcar (lambda (item)
             (let ((narrowed (plist-select-keys item '(:kind)))
                   (id (plist-get-in item '(:contentDetails :videoId)))
