@@ -105,6 +105,66 @@ This should be stored securely using auth-source."
                     secret))))
       (cons my-tube-client-id my-tube-client-secret))))
 
+(defun my-tube--save-tokens (access-token refresh-token expiry-time)
+  "Save OAuth tokens to auth-source for persistence."
+  (let ((token-host (concat my-tube-auth-source-host "-tokens"))
+        (token-data (json-encode `((access_token . ,access-token)
+                                   (refresh_token . ,refresh-token)
+                                   (expiry_time . ,(float-time expiry-time))))))
+    (cond
+     ;; Try to save to macOS Keychain if available
+     ((and (eq system-type 'darwin)
+           (executable-find "security"))
+      (let ((temp-file (make-temp-file "my-tube-tokens")))
+        (with-temp-file temp-file
+          (insert token-data))
+        (call-process "security" nil nil nil
+                      "add-generic-password"
+                      "-a" "tokens"
+                      "-s" token-host
+                      "-w" token-data
+                      "-U")))
+     ;; Fallback to storing in a simple variable (session-only)
+     (t
+      (set (intern (concat "my-tube--stored-tokens-" token-host)) token-data)))))
+
+(defun my-tube--restore-tokens ()
+  "Restore OAuth tokens from auth-source storage."
+  (let ((token-host (concat my-tube-auth-source-host "-tokens"))
+        (token-data nil))
+    (cond
+     ;; Try to restore from macOS Keychain if available
+     ((and (eq system-type 'darwin)
+           (executable-find "security"))
+      (with-temp-buffer
+        (when (zerop (call-process "security" nil t nil
+                                   "find-generic-password"
+                                   "-a" "tokens"
+                                   "-s" token-host
+                                   "-w"))
+          (setq token-data (buffer-string)))))
+     ;; Fallback to checking session variable
+     (t
+      (let ((var-name (intern (concat "my-tube--stored-tokens-" token-host))))
+        (when (boundp var-name)
+          (setq token-data (symbol-value var-name))))))
+    
+    (when (and token-data (stringp token-data) (> (length token-data) 0))
+      (condition-case nil
+          (let* ((json-object-type 'plist)
+                 (json-key-type 'symbol)
+                 (json-array-type 'vector)
+                 (parsed-data (json-read-from-string token-data))
+                 (access-token (plist-get parsed-data :access_token))
+                 (refresh-token (plist-get parsed-data :refresh_token))
+                 (expiry-time (plist-get parsed-data :expiry_time)))
+            (when (and access-token refresh-token expiry-time)
+              (setq my-tube--access-token access-token)
+              (setq my-tube--refresh-token refresh-token)
+              (setq my-tube--token-expiry (seconds-to-time expiry-time))
+              t))
+        (error nil)))))
+
 (defun my-tube--build-auth-url (client-id)
   "Build OAuth 2.0 authorization URL with CLIENT-ID."
   (format "%s?client_id=%s&redirect_uri=%s&scope=%s&response_type=code&access_type=offline"
@@ -146,6 +206,7 @@ This should be stored securely using auth-source."
             (setq my-tube--refresh-token (plist-get response :refresh_token))
             (setq my-tube--token-expiry
                   (time-add (current-time) (seconds-to-time (plist-get response :expires_in))))
+            (my-tube--save-tokens my-tube--access-token my-tube--refresh-token my-tube--token-expiry)
             t))))))
 
 (defun my-tube--refresh-access-token ()
@@ -182,15 +243,17 @@ This should be stored securely using auth-source."
             (setq my-tube--access-token (plist-get response :access_token))
             (setq my-tube--token-expiry
                   (time-add (current-time) (seconds-to-time (plist-get response :expires_in))))
+            (my-tube--save-tokens my-tube--access-token my-tube--refresh-token my-tube--token-expiry)
             t))))))
 
 (defun my-tube--ensure-valid-token ()
   "Ensure we have a valid access token."
   (when (or (not my-tube--access-token)
             (and my-tube--token-expiry (time-less-p my-tube--token-expiry (current-time))))
-    (if my-tube--refresh-token
-        (my-tube--refresh-access-token)
-      (error "No valid token available. Please run `my-tube-authenticate`"))))
+    (unless (my-tube--restore-tokens)
+      (if my-tube--refresh-token
+          (my-tube--refresh-access-token)
+        (error "No valid token available. Please run `my-tube-authenticate`")))))
 
 ;;;###autoload
 (defun my-tube-authenticate ()
