@@ -183,6 +183,8 @@ This should be stored securely using auth-source."
           (url-hexify-string my-tube-redirect-uri)
           (url-hexify-string my-tube--oauth-scope)))
 
+
+
 (defun my-tube--exchange-code-for-token (code)
   "Exchange authorization CODE for access token."
   (let* ((credentials (my-tube--get-credentials))
@@ -226,7 +228,7 @@ This should be stored securely using auth-source."
             (setq my-tube--token-expiry
                   (time-add (current-time) (seconds-to-time (plist-get response :expires_in))))
             (my-tube--save-tokens my-tube--access-token my-tube--refresh-token my-tube--token-expiry)
-            t)))))
+            t))))))
 
 (defun my-tube--refresh-access-token ()
   "Refresh the access token using the refresh token."
