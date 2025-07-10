@@ -368,6 +368,51 @@ If CHANNEL-ID is provided, list playlists for that channel."
 
 ;;; Utility Functions
 
+(defun plist-select-keys (plist keys)
+  "Return a new plist containing only the KEYs from PLIST."
+  (let ((result '()))
+    (dolist (k keys)
+      (plist-put! result k (plist-get plist k)))
+    result))
+
+(defun plist-get-in (plist keys)
+  "Retrieve a nested value from PLIST using KEYS list."
+  (let ((current plist))
+    (dolist (key keys)
+      (setq current (plist-get current key))
+      (unless current
+        (cl-return nil)))
+    current))
+
+(defun my-tube--format-playlist-url (playlist-id)
+  "Returns th YouTube URL for the PLAYLIST-ID"
+  (format "https://www.youtube.com/playlist?list=%s" playlist-id))
+
+(defun my-tube--flatten-playlists (response)
+  "Returns a flattened list of playlists in the RESPONSE containing
+only :kind :id :title :count :url :and keys."
+  (mapcar (lambda (item)
+            (let ((narrowed (plist-select-keys item '(:kind :id)))
+                  (title (plist-get-in item '(:snippet :title)))
+                  (count (plist-get-in item '(:contentDetails :itemCount)))
+                  (url   (my-tube--format-playlist-url (plist-get item :id))))
+              (plist-put! narrowed :title title :count count :url url)
+              narrowed))
+    (plist-get response :items)))
+
+(defun my-tube--flatten-playlist-items (response)
+  "Returns a flattened list of playlist items in the RESPONSE containing
+only :kind :id :title and :url keys."
+  (mapcar (lambda (item)
+            (let ((narrowed (plist-select-keys item '(:kind :id)))
+                  (title (plist-get-in item '(:snippet :title)))
+                  (count (plist-get-in item '(:contentDetails :itemCount)))
+                  (url   (my-tube--format-playlist-url (plist-get item :id))))
+              (plist-put! narrowed :title title :count count :url url)
+              narrowed))
+    (plist-get response :items)))
+
+
 (defun my-tube--extract-video-id (url)
   "Extract video ID from YouTube URL."
   (cond
@@ -379,24 +424,39 @@ If CHANNEL-ID is provided, list playlists for that channel."
 
 (defun my-tube--format-playlist (playlist)
   "Format playlist data for display."
-  (let ((snippet (plist-get playlist :snippet)))
-    (format "%s (%s items)"
-            (plist-get snippet :title)
-            (plist-get (plist-get playlist :contentDetails) :itemCount))))
+  (format "%s (%s items) - %s"
+    (plist-get playlist :title)
+    (plist-get playlist :count)
+    (plist-get playlist :url)))
 
 (defun my-tube--format-video-url (playlist video)
   "Format the video URL"
   (format "https://www.youtube.com/watch?v=%s&list=%s" video playlist))
 
+(defun my-tube--flatten-playlist-items (response)
+  "Returns a flattened list of playlist items in the RESPONSE containing
+only :kind :id :title :count and :url keys."
+  (mapcar (lambda (item)
+            (let ((narrowed (plist-select-keys item '(:kind)))
+                  (id (plist-get-in item '(:contentDetails :videoId)))
+                  (title (plist-get-in item '(:snippet :title)))
+                  (playlist (plist-get-in item '(:snippet :playlistId)))
+                  (position (plist-get-in item '(:snippet :position)))
+                  (channel-name (plist-get-in item '(:snippet :videoOwnerChannelTitle)))
+                  (channel-id (plist-get-in item '(:snippet :videoOwnerChannelId))))
+              (plist-put! narrowed
+                :id id :title title :playlist playlist :position position
+                :channel-name channel-name :channel-id channel-id
+                :url (my-tube--format-video-url playlist id))
+              narrowed))
+    (plist-get response :items)))
+
 (defun my-tube--format-playlist-item (item)
-  "Format playlist item data for display."
-  (let* ((snippet (plist-get item :snippet))
-         (playlist (plist-get snippet :playlistId))
-         (resource (plist-get snippet :resourceId))
-         (video (plist-get resource :videoId)))
-    (format "%s - %s"
-            (plist-get snippet :title)
-            (my-tube--format-video-url playlist video))))
+  "Format playlist item for display."
+  (format "%s: %s - %s"
+    (plist-get item :channel-name)
+    (substring (plist-get item :title) 0 25)
+    (plist-get item :url)))
 
 ;;; Interactive Commands
 ;;;###autoload
@@ -405,7 +465,7 @@ If CHANNEL-ID is provided, list playlists for that channel."
   (interactive)
   (condition-case err
       (let* ((response (my-tube--api-playlists-list t))
-             (playlists (plist-get response :items)))
+             (playlists (my-tube--flatten-playlists response)))
         (if playlists
             (with-current-buffer (get-buffer-create "*My Tube Playlists*")
               (erase-buffer)
@@ -450,15 +510,15 @@ If CHANNEL-ID is provided, list playlists for that channel."
   (interactive)
   (condition-case err
       (let* ((response (my-tube--api-playlists-list t))
-             (playlists (plist-get response :items))
+             (playlists (my-tube--flatten-playlists response))
              (playlist-names (mapcar (lambda (p) 
-                                       (cons (my-tube--format-playlist p) 
+                                       (cons (my-tube--format-playlist p)
                                              (plist-get p :id))) 
                                      playlists))
              (selected (completing-read "Select playlist: " playlist-names))
              (playlist-id (cdr (assoc selected playlist-names)))
              (items-response (my-tube--api-playlist-items-list playlist-id))
-             (items (plist-get items-response :items)))
+             (items (my-tube--flatten-playlist-items items-response)))
         (if items
             (with-current-buffer (get-buffer-create "*My Tube Playlist Items*")
               (erase-buffer)
