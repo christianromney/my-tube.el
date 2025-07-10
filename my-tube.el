@@ -467,7 +467,7 @@ If CHANNEL-ID is provided, list playlists for that channel."
 ;;;###autoload
 (defun my-tube-add-item-to-playlist (url)
   "Add a YouTube video URL to a playlist."
-  (interactive "sYouTube video URL: ")
+  (interactive "YouTube video URL: ")
   (condition-case err
       (let ((video-id (my-tube--extract-video-id url)))
         (unless video-id
