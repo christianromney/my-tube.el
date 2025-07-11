@@ -386,7 +386,7 @@ If CHANNEL-ID is provided, list playlists for that channel."
   (if (null keys)
     result
     (let ((k (car keys)))
-      (plist-select-keys2 plist (cdr keys)
+      (plist-select-keys plist (cdr keys)
         (if (plist-member plist k)
           (plist-put result k (plist-get plist k))
           result)))))
